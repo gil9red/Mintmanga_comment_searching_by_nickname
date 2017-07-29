@@ -36,7 +36,17 @@ def collect_user_comments(user, url_manga,
 
         from urllib.parse import urljoin
         from urllib.request import urlopen
-        html = urlopen(url_manga).read()
+
+        while True:
+            try:
+                html = urlopen(url_manga).read()
+                break
+
+            except:
+                log('Проблема при обращении к "{}", ожидание 5 минут'.format(url_manga))
+
+                import time
+                time.sleep(5 * 60)
 
         from lxml import etree
         root = etree.HTML(html)
@@ -58,7 +68,17 @@ def collect_user_comments(user, url_manga,
             volume_url = urljoin(url_manga, option.attrib['value'])
             log('Глава "{}": {}'.format(title, volume_url))
 
-            html = urlopen(volume_url).read()
+            while True:
+                try:
+                    html = urlopen(volume_url).read()
+                    break
+
+                except:
+                    log('Проблема при обращении к "{}", ожидание 5 минут'.format(volume_url))
+
+                    import time
+                    time.sleep(5 * 60)
+
             root = etree.HTML(html)
 
             comments = list()
