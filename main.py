@@ -4,17 +4,26 @@
 __author__ = 'ipetrash'
 
 
+from urllib.parse import urljoin
+from urllib.request import urlopen
+
+import time
+
+from lxml import etree
+
+
 # TODO: сделать вебсервер
 # TODO: указывать страницу коммента
 # TODO: заменить handler_range_progress_func на handler_max_progress_func,
 # т.к. "range" в данной функции всегда начинается с 0
-def collect_user_comments(user, url_manga,
-                          handler_log_func=print,
-                          is_stop_func=None,
-                          handler_progress_func=None,
-                          handler_range_progress_func=None,
-                          ):
-    """Скрипт ищет комментарии указанного пользователя сайта http://readmanga.me/ и выводит их.
+def collect_user_comments(
+        user, url_manga,
+        handler_log_func=print,
+        is_stop_func=None,
+        handler_progress_func=None,
+        handler_range_progress_func=None,
+    ):
+    """Скрипт ищет комментарии указанного пользователя сайта https://readmanga.live/ и выводит их.
 
     :param user:
     :param url_manga:
@@ -34,9 +43,6 @@ def collect_user_comments(user, url_manga,
         log = lambda x=None: handler_log_func and handler_log_func(x)
         progress_func = lambda i=None: handler_progress_func and handler_progress_func(i)
 
-        from urllib.parse import urljoin
-        from urllib.request import urlopen
-
         while True:
             try:
                 html = urlopen(url_manga).read()
@@ -48,7 +54,6 @@ def collect_user_comments(user, url_manga,
                 import time
                 time.sleep(5 * 60)
 
-        from lxml import etree
         root = etree.HTML(html)
 
         # Из комбобокса вытаскиванием список всех глав
@@ -75,8 +80,6 @@ def collect_user_comments(user, url_manga,
 
                 except:
                     log('Проблема при обращении к "{}", ожидание 5 минут'.format(volume_url))
-
-                    import time
                     time.sleep(5 * 60)
 
             root = etree.HTML(html)
@@ -86,7 +89,7 @@ def collect_user_comments(user, url_manga,
             # Сбор всех комментариев главы
             for div in root.xpath('//*[@id="twitts"]/div/div'):
                 a = div.xpath('a')
-                span = div.xpath('span')
+                span = div.xpath('div[@class="mess"]')
 
                 # Возможны div без комментов внутри, поэтому проверяем наличие тегов a (логин) и span (текст)
                 if a and span:
