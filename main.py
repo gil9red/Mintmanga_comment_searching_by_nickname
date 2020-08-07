@@ -4,104 +4,113 @@
 __author__ = 'ipetrash'
 
 
+from collections import defaultdict
 from urllib.parse import urljoin
 from urllib.request import urlopen
 import time
+import re
 
-from lxml import etree
+from bs4 import BeautifulSoup, Tag
 
 
-# TODO: сделать вебсервер
-# TODO: указывать страницу коммента
-# TODO: заменить handler_range_progress_func на handler_max_progress_func,
-# т.к. "range" в данной функции всегда начинается с 0
+PATTERN_PAGE_FROM_CLASS = re.compile(r'cm_(\d+)')
+
+
+def _get_number_page(page_el: Tag) -> int:
+    # Example: 'hide cm_0 cm' -> 1
+    page_class = ' '.join(page_el.get_attribute_list('class'))
+
+    m = PATTERN_PAGE_FROM_CLASS.search(page_class)
+    if not m:
+        raise Exception(f'Not found page from class: {page_class}')
+
+    # Страницы начинаются с 0
+    return int(m.group(1)) + 1
+
+
 def collect_user_comments(
         user, url_manga,
         handler_log_func=print,
-        is_stop_func=None,
-        handler_progress_func=None,
-        handler_range_progress_func=None,
+        is_stop_func=lambda: False,
+        handler_progress_func=lambda i: None,
+        handler_max_progress_func=lambda max_val: None,
     ):
-    """Скрипт ищет комментарии указанного пользователя сайта https://readmanga.live/ и выводит их.
+    """
+    Скрипт ищет комментарии указанного пользователя сайта https://readmanga.live/ и выводит их.
 
-    :param user:
-    :param url_manga:
-    :param handler_log_func:
-    :param is_stop_func:
-    :param handler_progress_func:
-    :param handler_range_progress_func:
     """
 
     number = 0
 
+    log = lambda x=None: handler_log_func(x)
+
     try:
-        is_stop = lambda x=None: is_stop_func and is_stop_func()
+        is_stop = lambda x=None: is_stop_func()
         if is_stop():
             return
 
-        log = lambda x=None: handler_log_func and handler_log_func(x)
-        progress_func = lambda i=None: handler_progress_func and handler_progress_func(i)
+        progress_func = lambda i=None: handler_progress_func(i)
 
         while True:
             try:
                 html = urlopen(url_manga).read()
                 break
-
             except:
-                log('Проблема при обращении к "{}", ожидание 5 минут'.format(url_manga))
+                log(f'[-] Проблема при обращении к "{url_manga}", ожидание 5 минут')
                 time.sleep(5 * 60)
 
-        root = etree.HTML(html)
+        root = BeautifulSoup(html, 'html.parser')
 
         # Из комбобокса вытаскиванием список всех глав
-        all_option_list = root.xpath('//*[@id="chapterSelectorSelect"]/option')
+        all_option_list = root.select('#chapterSelectorSelect > option')
         number_chapters = len(all_option_list)
 
-        handler_range_progress_func and handler_range_progress_func(0, number_chapters)
+        handler_max_progress_func(number_chapters)
 
         for i, option in enumerate(reversed(all_option_list), 1):
             # Если функция is_stop_func определена и возвращает True, прерываем поиск
             if is_stop():
                 return
 
-            title = option.text
+            title = option.get_text(strip=True)
 
             # Относительную ссылку на главу делаем абсолютной
-            volume_url = urljoin(url_manga, option.attrib['value'])
-            log('Глава "{}": {}'.format(title, volume_url))
+            volume_url = urljoin(url_manga, option['value'])
+            log(f'Глава {title!r}: {volume_url}')
 
             while True:
                 try:
                     html = urlopen(volume_url).read()
                     break
-
                 except:
-                    log('Проблема при обращении к "{}", ожидание 5 минут'.format(volume_url))
+                    log(f'[-] Проблема при обращении к "{volume_url}", ожидание 5 минут')
                     time.sleep(5 * 60)
 
-            root = etree.HTML(html)
+            root = BeautifulSoup(html, 'html.parser')
+            page_by_comments = defaultdict(list)
 
-            comments = list()
+            # Перебор страниц комментариев
+            for div_page in root.select('#twitts > div.cm'):
+                page = _get_number_page(div_page)
 
-            # Сбор всех комментариев главы
-            for div in root.xpath('//*[@id="twitts"]/div/div'):
-                a = div.xpath('a')
-                span = div.xpath('div[@class="mess"]')
-
-                # Возможны div без комментов внутри, поэтому проверяем наличие тегов a (логин) и span (текст)
-                if a and span:
-                    a = a[0]
-                    span = span[0]
-
-                    if a.text == user:
-                        comments.append((a.text, span.text))
+                # Перебор комментариев
+                for div_comment in div_page.select('div.comm'):
+                    comm_user = div_comment.a.get_text(strip=True)
+                    if comm_user == user:
+                        mess = div_comment.select_one('div.mess').get_text(strip=True)
+                        page_by_comments[page].append((user, mess))
 
             # Если список не пуст
-            if comments:
-                number += len(comments)
+            if page_by_comments:
+                # Сортировка по страницам
+                page_by_comments_items = sorted(page_by_comments.items(), key=lambda x: x[0])
 
-                for login, text in comments:
-                    log('  {}: {}'.format(login, text))
+                for page, (comments) in page_by_comments_items:
+                    number += len(comments)
+
+                    log(f'    Страница {page}:')
+                    for login, text in comments:
+                        log(f'        {login}: {text!r}')
 
                 log('')
 
@@ -109,7 +118,7 @@ def collect_user_comments(
 
     finally:
         log('')
-        log('Найдено {} комментов "{}".'.format(number, user))
+        log(f'Найдено {number} комментов {user!r}.')
 
 
 if __name__ == '__main__':

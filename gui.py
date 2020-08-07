@@ -28,7 +28,7 @@ from PyQt5.QtWidgets import *
 class CollectCommentsThread(QThread):
     about_new_text = pyqtSignal(str)
     about_progress = pyqtSignal(int)
-    about_range_progress = pyqtSignal(int, int)
+    about_set_max_range_progress = pyqtSignal(int)
 
     def __init__(self, user=None, url=None):
         super().__init__()
@@ -46,7 +46,7 @@ class CollectCommentsThread(QThread):
                 self.user, self.url,
                 handler_log_func=self.about_new_text.emit,
                 handler_progress_func=self.about_progress.emit,
-                handler_range_progress_func=self.about_range_progress.emit,
+                handler_max_progress_func=self.about_set_max_range_progress.emit,
                 is_stop_func=lambda x=None: not self._is_run,
             )
 
@@ -88,6 +88,7 @@ class MainWindow(QWidget):
         self.log.setReadOnly(True)
 
         self.progress = QProgressBar()
+        self.progress.hide()
 
         control_layout = QFormLayout()
         control_layout.addRow('Ник:', self.nick_line_edit)
@@ -102,7 +103,7 @@ class MainWindow(QWidget):
         self.thread = CollectCommentsThread()
         self.thread.about_new_text.connect(self.log.append)
         self.thread.about_progress.connect(self.progress.setValue)
-        self.thread.about_range_progress.connect(self.progress.setRange)
+        self.thread.about_set_max_range_progress.connect(lambda val: self.progress.setRange(0, val))
         self.thread.started.connect(self._start)
         self.thread.finished.connect(self._finished)
 
@@ -121,10 +122,12 @@ class MainWindow(QWidget):
 
     def _start(self):
         self.log.clear()
+        self.progress.show()
         self.progress.setValue(0)
 
     def _finished(self):
         self._update_states()
+        self.progress.hide()
 
     def _update_states(self):
         self.start_stop_button.setText('Стоп' if self.thread.isRunning() else 'Начать поиск')
