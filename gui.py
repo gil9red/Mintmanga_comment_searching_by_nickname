@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 
+import sys
 import traceback
 
 
@@ -14,7 +15,7 @@ def log_uncaught_exceptions(ex_cls, ex, tb):
     QMessageBox.critical(None, 'Error', text)
     quit()
 
-import sys
+
 sys.excepthook = log_uncaught_exceptions
 
 
@@ -139,7 +140,7 @@ class MainWindow(QWidget):
         super().keyPressEvent(event)
 
     def closeEvent(self, event):
-        quit()
+        QApplication.instance().quit()
 
 
 if __name__ == '__main__':
