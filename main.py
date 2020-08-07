@@ -117,5 +117,5 @@ def collect_user_comments(
 
 if __name__ == '__main__':
     user = 'Rihoko7'
-    url = 'http://mintmanga.com/tokyo_ghoul/vol1/1?mature=1'
+    url = 'https://mintmanga.live/tokiiskii_gul/vol1/1?mtr=1'
     collect_user_comments(user, url)
