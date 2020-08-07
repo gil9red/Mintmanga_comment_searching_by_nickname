@@ -29,12 +29,13 @@ def _get_number_page(page_el: Tag) -> int:
 
 
 def collect_user_comments(
-        user, url_manga,
-        handler_log_func=print,
-        is_stop_func=lambda: False,
-        handler_progress_func=lambda i: None,
-        handler_max_progress_func=lambda max_val: None,
-    ):
+    user: str,
+    url_manga: str,
+    handler_log_func=print,
+    is_stop_func=lambda: False,
+    handler_progress_func=lambda i: None,
+    handler_max_progress_func=lambda max_val: None,
+):
     """
     Скрипт ищет комментарии указанного пользователя сайта https://readmanga.live/ и выводит их.
 
