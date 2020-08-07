@@ -6,7 +6,6 @@ __author__ = 'ipetrash'
 
 from urllib.parse import urljoin
 from urllib.request import urlopen
-
 import time
 
 from lxml import etree
@@ -50,8 +49,6 @@ def collect_user_comments(
 
             except:
                 log('Проблема при обращении к "{}", ожидание 5 минут'.format(url_manga))
-
-                import time
                 time.sleep(5 * 60)
 
         root = etree.HTML(html)
