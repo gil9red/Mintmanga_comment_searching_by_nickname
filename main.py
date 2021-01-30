@@ -63,12 +63,13 @@ def collect_user_comments(
         root = BeautifulSoup(html, 'html.parser')
 
         # Из комбобокса вытаскиванием список всех глав
-        all_option_list = root.select('#chapterSelectorSelect > option')
+        all_option_list = root.select('#chapterSelectorSelect option')
         number_chapters = len(all_option_list)
+        all_option_list.reverse()
 
         handler_max_progress_func(number_chapters)
 
-        for i, option in enumerate(reversed(all_option_list), 1):
+        for i, option in enumerate(all_option_list, 1):
             # Если функция is_stop_func определена и возвращает True, прерываем поиск
             if is_stop():
                 return
